@@ -1,0 +1,23 @@
+[app]
+identifier = "com.example.hello"
+display_name = "Hello"
+slug = "hello"
+version = "0.1.0"
+
+[linux]
+binaries = { x86_64 = "zig-out/bin/hello" }
+
+[gui]
+initial_width = 200
+initial_height = 200
+max_width = 200
+max_height = 200
+
+[fonts]
+families = [{ nerdfont = "BigBlueTerminal" }]
+
+[environment]
+variables = { HELLO_FROM = "trolley" }
+
+[ghostty]
+font-size = 12

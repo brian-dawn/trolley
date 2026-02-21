@@ -1,0 +1,171 @@
+> NOTE: This software is _pre-alpha_. Functionality and design expected to be broken.
+
+# Trolley
+
+**Run terminal apps anywhere.**
+
+Trolley is a simple terminal emulator runtime, allowing you to distribute TUI
+applications to non-technical users. Although mostly simple, two recent developments
+make it is quite powerful:
+
+1. Improvements in terminal functionality and performance 
+2. Flourishing of easy to use, powerful TUI libraries
+
+If you are building software that fits the textual interface style, you'll be able
+to create perfoment, _cross-platform_ applications. Launching in under a second is typical.
+Combined with TUI frameworks like OpenTUI, Bubbletea & Ratatui, it is extremely easy 
+to create apps with a developer experience ecosystems, not much different than a webapp.
+
+## Giants and their shoulders
+
+Trolley is built on top of [Ghostty](https://github.com/ghostty-org/ghostty/),
+which powers most of everything the end user will see and do, and enables the
+aforemenetioned functionality. Even the GUI wrappers are stripped down versions
+of Ghostty's.
+
+For packaging, [cargo-packager](https://github.com/crabnebula-dev/cargo-packager)
+does most of the heavy lifting.
+
+Trolley, then, is an ergonomic wrapper around those two.
+
+## Quickstart
+
+```
+trolley init my-app
+```
+
+This scaffolds a `trolley.toml` manifest. Point it at your TUI binary:
+
+```toml
+[app]
+identifier = "com.example.my-app"
+display_name = "My App"
+slug = "my-app"
+version = "0.1.0"
+
+[linux]
+binaries = { x86_64 = "target/release/my-app" }
+
+[gui]
+initial_width = 800
+initial_height = 600
+
+[fonts]
+families = [{ nerdfont = "JetBrainsMono" }]
+
+[ghostty]
+font-size = 14
+```
+
+Then run to see how it works:
+
+```
+trolley run
+```
+
+Or package to send to your end users:
+
+```
+trolley package
+```
+
+## How it works
+
+Trolley bundles your TUI, assets, and config next to a terminal emulator runtime. It
+instructs it to launch your exeutable.
+
+Trolley's runtime is a thin native wrapper around
+[libghostty](https://github.com/ghostty-org/ghostty), the core library of
+the Ghostty terminal emulator. libghostty handles VT parsing, PTY management,
+GPU rendering, font shaping, and input encoding. Trolley provides the native
+window and kiosk behavior.
+
+| Platform | Runtime language | Windowing | Renderer |
+|----------|------------------|-----------|----------|
+| macOS    | Swift (AppKit)   | NSWindow  | Metal    |
+| Linux    | Zig (GLFW)       | GLFW      | OpenGL   |
+| Windows  | Zig (Win32)      | GLFW      | OpenGL   |
+
+### Development Prerequisites
+
+- [Nix](https://nixos.org/) with flakes enabled (provides all build tools), or:
+- Rust toolchain, Zig compiler, and platform dependencies (GLFW, X11 libs on Linux)
+
+## Manifest
+
+The manifest file `trolley.toml` has the following sections:
+
+### `[app]` -- required
+
+| Field          | Description                                |
+|----------------|--------------------------------------------|
+| `identifier`   | Reverse-DNS identifier (e.g. `com.foo.bar`)|
+| `display_name` | Human-readable application name            |
+| `slug`         | Filesystem-safe name (lowercase, hyphens)  |
+| `version`      | Version string                             |
+| `icon`         | Path to icon file (optional)               |
+
+### `[linux]`, `[macos]`, `[windows]` -- at least one required
+
+```toml
+[linux]
+binaries = { x86_64 = "path/to/binary", aarch64 = "path/to/binary" }
+```
+
+### `[gui]` -- optional
+
+`initial_width`, `initial_height`, `resizable`, `min_width`, `min_height`,
+`max_width`, `max_height`.
+
+### `[fonts]` -- optional
+
+```toml
+[fonts]
+families = [
+    { nerdfont = "Inconsolata" },      # auto-downloaded from Nerd Fonts
+    { path = "fonts/Custom.ttf" },     # local font file
+]
+```
+
+### `[environment]` -- optional
+
+```toml
+[environment]
+env_file = ".env"
+variables = { MY_VAR = "value" }
+```
+
+### `[ghostty]` -- optional
+
+Pass-through configuration for the Ghostty terminal engine. Accepts any
+Ghostty config key with a scalar value (string, integer, float, or boolean).
+Note that configs meant for Ghostty's GUI will not take effect (obviously).
+
+```toml
+[ghostty]
+font-size = 14
+theme = "dracula"
+```
+
+## Package formats
+
+| Platform | Default formats                       |
+|----------|---------------------------------------|
+| Linux    | AppImage, .deb, .rpm, pacman, .tar.gz |
+| macOS    | .app, .dmg, .tar.gz                   |
+| Windows  | NSIS installer                        |
+
+Select specific formats with `--formats`:
+
+```
+trolley package --formats appimage,deb
+```
+
+## BUNDLING != SANDBOXING
+
+Trolley simply runs your executable inside a terminal, and in that sense, provides no
+extra security or sandbox guarantees.
+
+## License
+
+MIT

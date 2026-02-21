@@ -1,0 +1,7 @@
+---
+source: src/commands/common.rs
+assertion_line: 520
+expression: "String::from_utf8(result).unwrap()"
+---
+LANG=en_US.UTF-8
+LC_ALL=C.UTF-8

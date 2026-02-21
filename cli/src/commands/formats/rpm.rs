@@ -1,0 +1,121 @@
+use std::fs::{self, File};
+use std::io::Write;
+use std::path::Path;
+
+use anyhow::{Context, Result};
+use rpm::{FileMode, FileOptions};
+use trolley_config::{Config, rpm_arch};
+use walkdir::WalkDir;
+
+use super::super::common::{BundleManifest, BundleVariant};
+
+pub fn build(
+    bundle_dir: &Path,
+    dist_dir: &Path,
+    config: &Config,
+    manifest: &BundleManifest,
+) -> Result<()> {
+    let BundleVariant::Linux {
+        ref wrapper_name,
+        ref install_prefix,
+    } = manifest.variant
+    else {
+        unreachable!("RPM build called for non-Linux target");
+    };
+
+    let arch = rpm_arch(&manifest.target);
+    let filename = format!(
+        "{slug}-{version}-1.{arch}.rpm",
+        slug = config.app.slug,
+        version = config.app.version
+    );
+    let output_path = dist_dir.join(&filename);
+
+    // Use a temp dir for files the rpm builder needs (empty dir placeholder, wrapper script)
+    let staging = dist_dir.join(".rpm-staging");
+    if staging.exists() {
+        fs::remove_dir_all(&staging)?;
+    }
+    fs::create_dir_all(&staging)?;
+
+    let executables = manifest.executables();
+
+    let mut builder = rpm::PackageBuilder::new(
+        &config.app.slug,
+        &config.app.version,
+        "Proprietary",
+        arch,
+        &config.app.display_name,
+    )
+    .compression(rpm::CompressionWithLevel::Gzip(6));
+
+    // Add the install prefix directory
+    let empty_file_path = staging.join("empty");
+    File::create(&empty_file_path)?;
+    builder = builder.with_file(
+        &empty_file_path,
+        FileOptions::new(install_prefix).mode(FileMode::Dir { permissions: 0o755 }),
+    )?;
+
+    for entry in WalkDir::new(bundle_dir) {
+        let entry = entry.context("walking bundle directory")?;
+        let src_path = entry.path();
+
+        if src_path == bundle_dir {
+            continue;
+        }
+
+        let rel_path = src_path
+            .strip_prefix(bundle_dir)
+            .context("stripping bundle prefix")?;
+        let dest_path = format!("{install_prefix}/{}", rel_path.display());
+
+        if entry.file_type().is_dir() {
+            builder = builder.with_file(
+                &empty_file_path,
+                FileOptions::new(dest_path).mode(FileMode::Dir { permissions: 0o755 }),
+            )?;
+        } else {
+            let file_name = rel_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            let mode = if executables.contains(&file_name) {
+                FileMode::Regular { permissions: 0o755 }
+            } else {
+                FileMode::Regular { permissions: 0o644 }
+            };
+            builder = builder.with_file(src_path, FileOptions::new(dest_path).mode(mode))?;
+        }
+    }
+
+    // Create /usr/bin/<slug> wrapper script
+    // This for consistency with cargo-packager
+    let wrapper_content = format!(
+        "#!/usr/bin/env sh\nexec {install_prefix}/{} \"$@\"\n",
+        manifest.runtime_name
+    );
+    let wrapper_path = staging.join(wrapper_name);
+    fs::write(&wrapper_path, &wrapper_content)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&wrapper_path, fs::Permissions::from_mode(0o755))?;
+    }
+    builder = builder.with_file(
+        &wrapper_path,
+        FileOptions::new(format!("/usr/bin/{}", config.app.slug))
+            .mode(FileMode::Regular { permissions: 0o755 }),
+    )?;
+
+    let pkg = builder.build()?;
+
+    let mut output_file = File::create(&output_path)
+        .with_context(|| format!("creating {}", output_path.display()))?;
+    pkg.write(&mut output_file)
+        .with_context(|| format!("writing {}", output_path.display()))?;
+    output_file.flush()?;
+
+    // Clean up staging
+    fs::remove_dir_all(&staging)?;
+
+    println!("  {filename}  (RPM package)");
+    Ok(())
+}

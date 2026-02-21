@@ -1,0 +1,179 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build (e.g. v0.1.0)"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  ZIG_VERSION: "0.15.2"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        run: |
+          TAG="${GITHUB_REF_NAME:-${{ inputs.tag }}}"
+          VERSION="${TAG#v}"
+          FILE_VERSION=$(cat VERSION | tr -d '[:space:]')
+          if [ "$VERSION" != "$FILE_VERSION" ]; then
+            echo "::error::Tag $TAG does not match VERSION file ($FILE_VERSION)"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  build-linux-windows:
+    needs: validate
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - x86_64-linux
+          - aarch64-linux
+          - x86_64-windows
+          - aarch64-windows
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Zig
+        run: |
+          curl -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-x86_64-${ZIG_VERSION}.tar.xz" | tar xJ
+          echo "$PWD/zig-linux-x86_64-${ZIG_VERSION}" >> "$GITHUB_PATH"
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          case "${{ matrix.target }}" in
+            x86_64-linux)    RUST_TARGET="x86_64-unknown-linux-gnu" ;;
+            aarch64-linux)   RUST_TARGET="aarch64-unknown-linux-gnu" ;;
+            x86_64-windows)  RUST_TARGET="x86_64-pc-windows-gnu" ;;
+            aarch64-windows) RUST_TARGET="aarch64-pc-windows-gnu" ;;
+          esac
+          rustup target add "$RUST_TARGET"
+
+      - name: Install cross-compilation toolchains
+        run: |
+          sudo apt-get update -qq
+          case "${{ matrix.target }}" in
+            aarch64-linux)
+              sudo apt-get install -y -qq gcc-aarch64-linux-gnu
+              ;;
+            x86_64-windows)
+              sudo apt-get install -y -qq gcc-mingw-w64-x86-64
+              ;;
+            aarch64-windows)
+              sudo apt-get install -y -qq gcc-aarch64-linux-gnu gcc-mingw-w64
+              ;;
+          esac
+
+      - name: Install just
+        run: |
+          curl -fsSL https://just.systems/install.sh | bash -s -- --to "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Build
+        run: just build --release --target ${{ matrix.target }}
+
+      - name: Package CLI
+        run: |
+          TARGET="${{ matrix.target }}"
+          case "$TARGET" in
+            *-linux)   RUST_TARGET_DIR=$(echo "$TARGET" | sed 's/linux/unknown-linux-gnu/') ;;
+            *-windows) RUST_TARGET_DIR=$(echo "$TARGET" | sed 's/windows/pc-windows-gnu/') ;;
+          esac
+          CLI_DIR="cli/target/$RUST_TARGET_DIR/release"
+          EXE="trolley"
+          if [[ "$TARGET" == *windows* ]]; then EXE="trolley.exe"; fi
+          tar cJf "trolley-cli-${TARGET}.tar.xz" -C "$CLI_DIR" "$EXE"
+
+      - name: Package runtime
+        run: |
+          TARGET="${{ matrix.target }}"
+          EXE="trolley"
+          if [[ "$TARGET" == *windows* ]]; then EXE="trolley.exe"; fi
+          tar cJf "trolley-runtime-${TARGET}.tar.xz" -C "runtime/zig-out-release/bin" "$EXE"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-${{ matrix.target }}
+          path: |
+            trolley-cli-${{ matrix.target }}.tar.xz
+            trolley-runtime-${{ matrix.target }}.tar.xz
+
+  build-macos:
+    needs: validate
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-macos
+            runner: macos-13
+          - target: aarch64-macos
+            runner: macos-14
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Zig
+        run: |
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "arm64" ]; then ARCH="aarch64"; fi
+          curl -fsSL "https://ziglang.org/download/${ZIG_VERSION}/zig-macos-${ARCH}-${ZIG_VERSION}.tar.xz" | tar xJ
+          echo "$PWD/zig-macos-${ARCH}-${ZIG_VERSION}" >> "$GITHUB_PATH"
+
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal
+
+      - name: Install just
+        run: |
+          curl -fsSL https://just.systems/install.sh | bash -s -- --to "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Build
+        run: just build --release
+
+      - name: Package CLI
+        run: |
+          tar cJf "trolley-cli-${{ matrix.target }}.tar.xz" -C "cli/target/release" "trolley"
+
+      - name: Package runtime
+        run: |
+          tar cJf "trolley-runtime-${{ matrix.target }}.tar.xz" -C "runtime/zig-out-release/bin" "trolley"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-${{ matrix.target }}
+          path: |
+            trolley-cli-${{ matrix.target }}.tar.xz
+            trolley-runtime-${{ matrix.target }}.tar.xz
+
+  release:
+    needs: [validate, build-linux-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: artifacts-*
+          merge-multiple: true
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          gh release create "v${VERSION}" \
+            --title "trolley ${VERSION}" \
+            --generate-notes \
+            trolley-*.tar.xz

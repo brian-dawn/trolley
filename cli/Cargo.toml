@@ -1,0 +1,31 @@
+[package]
+name = "trolley"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+trolley-config = { path = "../config", features = ["cli"] }
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+indicatif = "0.17"
+dialoguer = "0.11"
+console = "0.15"
+xshell = "0.2"
+which = "7"
+walkdir = "2"
+directories = "5"
+dotenvy = "0.15"
+toml = "0.8"
+url = "2"
+ureq = "3"
+tar = "0.4"
+xz2 = "0.1"
+ttf-parser = "0.25"
+flate2 = "1"
+rpm = "0.16"
+cargo-packager = { version = "0.11.8", default-features = false }
+
+
+[dev-dependencies]
+insta = "1"
+tempfile = "3"

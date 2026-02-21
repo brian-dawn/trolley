@@ -1,0 +1,5 @@
+module CTrolley {
+    header "trolley.h"
+    link "trolley_config"
+    export *
+}
