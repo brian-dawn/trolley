@@ -34,16 +34,15 @@
           src = lib.fileset.toSource {
             root = ./.;
             fileset = lib.fileset.unions [
+              ./Cargo.toml
+              ./Cargo.lock
               ./VERSION
               ./cli
               ./config
             ];
           };
-          cargoLock.lockFile = ./cli/Cargo.lock;
-          buildAndTestSubdir = "cli";
-          postUnpack = ''
-            cp source/cli/Cargo.lock source/Cargo.lock
-          '';
+          cargoLock.lockFile = ./Cargo.lock;
+          cargoBuildFlags = ["-p" "trolley"];
           env.TROLLEY_RUNTIME_SOURCE = "https://github.com/weedonandscott/trolley/releases/download/v{version}/trolley-runtime-{target}.tar.xz";
           nativeBuildInputs = [ pkgs.pkg-config ];
           buildInputs = [ pkgs.xz ]

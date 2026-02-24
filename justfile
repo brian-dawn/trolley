@@ -50,7 +50,7 @@ build-cli *flags:
         rust_target=$(just _rust-target "$target")
         cargo_args="$cargo_args --target $rust_target"
     fi
-    cd cli && cargo build --quiet $cargo_args
+    cargo build -p trolley --quiet $cargo_args
 
 # Build the config staticlib (manifest parsing, linked into the runtime)
 
@@ -81,7 +81,7 @@ build-config *flags:
         rust_target=$(just _rust-target "$target")
         cargo_args="$cargo_args --target $rust_target"
     fi
-    cd config && cargo build --quiet $cargo_args
+    cargo build -p trolley-config --quiet $cargo_args
 
 # Build the trolley runtime
 # Flags: [--release] [--target <triple>] [--system <path>]
@@ -136,13 +136,13 @@ build-runtime *flags:
     # Determine config lib path
     if [ -n "$target" ]; then
         rust_target=$(just _rust-target "$target")
-        config_dir="{{ justfile_directory() }}/config/target/$rust_target/$cargo_profile"
+        config_dir="{{ justfile_directory() }}/target/$rust_target/$cargo_profile"
         zig_target="-Dtarget=$(just _zig-target "$target")"
     elif [ -n "${WINDIR:-}" ]; then
         # Host Windows build forced to GNU target above
-        config_dir="{{ justfile_directory() }}/config/target/x86_64-pc-windows-gnu/$cargo_profile"
+        config_dir="{{ justfile_directory() }}/target/x86_64-pc-windows-gnu/$cargo_profile"
     else
-        config_dir="{{ justfile_directory() }}/config/target/$cargo_profile"
+        config_dir="{{ justfile_directory() }}/target/$cargo_profile"
     fi
 
     # Detect correct library filename: MSVC produces trolley_config.lib,
@@ -176,9 +176,9 @@ build-runtime *flags:
         if [ -n "$release" ]; then swift_config="release"; fi
         # When no --target was given, cargo outputs to target/$cargo_profile (no triple).
         if [ -n "$target" ]; then
-            config_link_dir="../../config/target/$rust_target/$cargo_profile"
+            config_link_dir="../../target/$rust_target/$cargo_profile"
         else
-            config_link_dir="../../config/target/$cargo_profile"
+            config_link_dir="../../target/$cargo_profile"
         fi
         cd macos && swift build -c "$swift_config" \
             -Xlinker -L../$prefix/lib \
@@ -228,7 +228,7 @@ release-cli *flags:
     exe="trolley"; if [[ "$target" == *-windows ]]; then exe="trolley.exe"; fi
     mkdir -p dist
     tar cJf "dist/trolley-cli-${target}.tar.xz" \
-        -C "cli/target/$rust_target/release" "$exe"
+        -C "target/$rust_target/release" "$exe"
 
 # Build and package the runtime for release
 # Requires: --target <triple>
@@ -278,7 +278,7 @@ release *flags: (release-cli flags) (release-runtime flags)
 
 # Rebuilds automatically via cargo run
 trolley *args:
-    cargo run --quiet --manifest-path cli/Cargo.toml -- {{ args }}
+    cargo run -p trolley --quiet -- {{ args }}
 
 # Run an example by name: just example hello [--release]
 example name *flags: (build-runtime flags)
@@ -290,7 +290,7 @@ example name *flags: (build-runtime flags)
     done
     exe_suffix=""; if [ -n "${WINDIR:-}" ]; then exe_suffix=".exe"; fi
     TROLLEY_RUNTIME_SOURCE='{{ justfile_directory() }}/runtime/'$prefix'/bin/trolley'$exe_suffix \
-        cargo run --quiet --manifest-path cli/Cargo.toml -- run --config 'examples/{{ name }}/trolley.toml'
+        cargo run -p trolley --quiet -- run --config 'examples/{{ name }}/trolley.toml'
 
 # Bump version in all files: just bump 0.2.0
 bump version:
@@ -299,7 +299,7 @@ bump version:
     echo "{{ version }}" > VERSION
     sed -i 's/^version = ".*"/version = "{{ version }}"/' cli/Cargo.toml config/Cargo.toml
     sed -i 's/\.version = ".*"/.version = "{{ version }}"/' runtime/build.zig.zon
-    cd cli && cargo update --workspace --quiet
+    cargo update --workspace --quiet
 
 # Clean font cache
 clean-fonts:
@@ -307,8 +307,7 @@ clean-fonts:
 
 # Clean all build artifacts
 clean:
-    cd config && cargo clean
-    cd cli && cargo clean
+    cargo clean
     cd runtime && rm -rf zig-out-debug zig-out-release .zig-cache
     cd runtime/macos && rm -rf .build
     rm -rf trolley/build trolley/cache dist

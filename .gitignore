@@ -1,5 +1,6 @@
 build.zig.zon.nix
 dist/
+target/
 
 .zig-cache/
 zig-cache/
