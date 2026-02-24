@@ -4,15 +4,21 @@
 
 **Run terminal apps anywhere.**
 
-Trolley is a simple terminal emulator runtime, allowing you to distribute TUI
-applications to non-technical users. Although mostly simple, two recent developments
-make it is quite powerful:
+Trolley lets you bundle any TUI executable together with a terminal emulator
+runtime, allowing you to distribute TUI applications to non-technical users.
+
+Trolley targets Linux and MacOS, with Windows compiling but untested.
+
+Other targets like iOS and Android are possible. Please open an issue if 
+interested.
+
+Although mostly simple, two recent developments make it quite powerful:
 
 1. Improvements in terminal functionality and performance 
 2. Flourishing of easy to use, powerful TUI libraries
 
 If you are building software that fits the textual interface style, you'll be able
-to create perfoment, _cross-platform_ applications. Launching in under a second is typical.
+to create performant, _cross-platform_ applications. Launching in under a second is typical.
 Combined with TUI frameworks like OpenTUI, Bubbletea & Ratatui, it is extremely easy 
 to create apps with a developer experience not much different than a webapp's.
 
@@ -20,7 +26,7 @@ to create apps with a developer experience not much different than a webapp's.
 
 Trolley is built on top of [Ghostty](https://github.com/ghostty-org/ghostty/),
 which powers most of everything the end user will see and do, and enables the
-aforemenetioned functionality. Even the GUI wrappers are stripped down versions
+aforementioned functionality. Even the GUI wrappers are stripped down versions
 of Ghostty's.
 
 For packaging, [cargo-packager](https://github.com/crabnebula-dev/cargo-packager)
@@ -72,7 +78,7 @@ trolley package
 ## How it works
 
 Trolley bundles your TUI, assets, and config next to a terminal emulator runtime. It
-instructs it to launch your exeutable.
+instructs it to launch your executable.
 
 Trolley's runtime is a thin native wrapper around
 [libghostty](https://github.com/ghostty-org/ghostty), the core library of
