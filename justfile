@@ -299,7 +299,7 @@ bump version:
     echo "{{ version }}" > VERSION
     sed -i 's/^version = ".*"/version = "{{ version }}"/' cli/Cargo.toml config/Cargo.toml
     sed -i 's/\.version = ".*"/.version = "{{ version }}"/' runtime/build.zig.zon
-    cd cli && cargo generate-lockfile --quiet
+    cd cli && cargo update --workspace --quiet
 
 # Clean font cache
 clean-fonts:
