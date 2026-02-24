@@ -34,6 +34,33 @@ does most of the heavy lifting.
 
 Trolley, then, is an ergonomic wrapper around those two.
 
+## Install
+
+**macOS / Linux (Homebrew):**
+
+```
+brew install weedonandscott/tap/trolley
+```
+
+**Linux (manual):**
+
+```
+curl -sL https://github.com/weedonandscott/trolley/releases/latest/download/trolley-cli-x86_64-linux.tar.xz | tar xJ
+mv trolley ~/.local/bin/
+```
+
+**Nix flake (builds from source):**
+
+```nix
+{
+  inputs.trolley.url = "github:weedonandscott/trolley";
+}
+```
+
+Then add `inputs.trolley.packages.${system}.default` to your packages.
+
+Binaries for all platforms are available on [GitHub Releases](https://github.com/weedonandscott/trolley/releases).
+
 ## Quickstart
 
 ```

@@ -34,6 +34,7 @@
           src = lib.fileset.toSource {
             root = ./.;
             fileset = lib.fileset.unions [
+              ./VERSION
               ./cli
               ./config
             ];
@@ -43,6 +44,7 @@
           postUnpack = ''
             cp source/cli/Cargo.lock source/Cargo.lock
           '';
+          env.TROLLEY_RUNTIME_SOURCE = "https://github.com/weedonandscott/trolley/releases/download/v{version}/trolley-runtime-{target}.tar.xz";
           nativeBuildInputs = [ pkgs.pkg-config ];
           buildInputs = [ pkgs.xz ]
             ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [

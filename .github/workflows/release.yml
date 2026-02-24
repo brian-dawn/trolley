@@ -202,3 +202,16 @@ jobs:
             --title "trolley ${VERSION}" \
             --generate-notes \
             trolley-*.tar.xz
+
+  update-homebrew:
+    needs: [validate, release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Homebrew formula
+        run: |
+          git clone "https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/weedonandscott/homebrew-tap.git"
+          cd homebrew-tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          ./update.sh "${{ needs.validate.outputs.version }}"
+          git push
