@@ -152,13 +152,18 @@ jobs:
       - name: Cache Zig dependencies
         uses: actions/cache@v4
         with:
-          path: ~/AppData/Local/zig
+          path: .zig-global-cache
           key: zig-cache-windows-${{ hashFiles('runtime/build.zig.zon', 'ghostty/build.zig.zon', 'ghostty/pkg/dcimgui/build.zig.zon') }}
           restore-keys: |
             zig-cache-windows-
 
       - name: Build and package
         shell: bash
+        env:
+          # Keep the global cache on the same drive as the checkout (D:\) to
+          # work around ziglang/zig#25805 (assertion failure when cache and
+          # source are on different drives, fixed after 0.15.2).
+          ZIG_GLOBAL_CACHE_DIR: ${{ github.workspace }}/.zig-global-cache
         run: |
           # Zig's HTTP client on Windows is flaky on GitHub Actions runners.
           # Retry to handle transient connection failures during dependency fetching.
