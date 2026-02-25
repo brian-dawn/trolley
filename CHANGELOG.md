@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.1
+
+### Runtime
+
+- [linux] Fix build
+
+### CLI
+
+_No changes_
+
 ## 0.4.0
 
 ### Runtime

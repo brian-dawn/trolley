@@ -3444,7 +3444,7 @@ dependencies = [
 
 [[package]]
 name = "trolley"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "anyhow",
  "cargo-packager",
@@ -3472,7 +3472,7 @@ dependencies = [
 
 [[package]]
 name = "trolley-config"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "anyhow",
  "cbindgen",
