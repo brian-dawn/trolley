@@ -61,15 +61,20 @@ jobs:
           name: trolley
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
+      - name: Install just
+        run: curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+
       - name: Cache Zig deps
         id: deps
-        run: echo "deps=$(just build-deps)" >> "$GITHUB_OUTPUT"
+        run: |
+          DEPS=$(just build-deps)
+          echo "deps=$DEPS" >> "$GITHUB_OUTPUT"
 
       - name: Build and package
         run: nix develop -L -v -c just release --target ${{ matrix.target }} --system ${{ steps.deps.outputs.deps }}
 
       - name: Sanity test
-        run: nix develop -L -v -c just sanity-test --target ${{ matrix.target }}
+        run: just sanity-test --target ${{ matrix.target }}
 
       - uses: actions/upload-artifact@v4
         with:
@@ -102,15 +107,27 @@ jobs:
           name: trolley
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
+      - name: Install tools
+        run: |
+          brew install just
+          rustup update stable
+
       - name: Cache Zig deps
         id: deps
-        run: echo "deps=$(just build-deps)" >> "$GITHUB_OUTPUT"
+        run: |
+          DEPS=$(just build-deps)
+          echo "deps=$DEPS" >> "$GITHUB_OUTPUT"
 
-      - name: Build and package
-        run: nix develop -L -v -c just release --target ${{ matrix.target }} --system ${{ steps.deps.outputs.deps }}
+      # Build the CLI outside the Nix shell so it links against macOS
+      # system libraries instead of Nix store paths.
+      - name: Build and package CLI
+        run: just release-cli --target ${{ matrix.target }}
+
+      - name: Build and package runtime
+        run: nix develop -L -v -c just release-runtime --target ${{ matrix.target }} --system ${{ steps.deps.outputs.deps }}
 
       - name: Sanity test
-        run: nix develop -L -v -c just sanity-test --target ${{ matrix.target }}
+        run: just sanity-test --target ${{ matrix.target }}
 
       - uses: actions/upload-artifact@v4
         with:
