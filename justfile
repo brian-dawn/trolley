@@ -179,6 +179,11 @@ build-runtime *flags:
     # Build all C deps from source so the binary only needs libc at runtime.
     # (--system enables all integrations by default; explicitly disable them.)
     sys_flags="-fno-sys=freetype -fno-sys=harfbuzz -fno-sys=fontconfig -fno-sys=oniguruma -fno-sys=libpng -fno-sys=zlib"
+    # fontconfig (Linux-only, lazy on macOS) depends on libxml2; disable it
+    # so it builds from source too.  The integration isn't registered on macOS.
+    if [[ "$target" == *"-linux" ]] || { [ -z "$target" ] && [[ "$(uname -s)" == "Linux" ]]; }; then
+        sys_flags="$sys_flags -fno-sys=libxml2"
+    fi
     cd runtime && zig build $zig_target $optimize $zig_system $sys_flags -Dconfig-lib="$config_lib" --prefix "$prefix"
 
     # Step 2: macOS needs a separate Swift build for the executable
