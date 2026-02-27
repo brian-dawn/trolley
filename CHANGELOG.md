@@ -1,14 +1,24 @@
 # Changelog
 
+## 0.5.0
+
+### Runtime
+
+- [all] Allow Ghostty config to override `command` (#5)
+
+### CLI
+
+- [macos] Fix CLI linked to nix store paths (#7)
+
 ## 0.4.2
 
 ### Runtime
 
-- [linux] Statically link CLI binary
+_No changes_
 
 ### CLI
 
-_No changes_
+- [linux] Statically link CLI binary
 
 ## 0.4.1
 
