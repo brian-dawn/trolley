@@ -560,10 +560,15 @@ pub fn assemble_config(
         buf.write_all(b"\n")?;
     }
 
-    // 5. Command to run the TUI binary (always last — can't be overridden)
+    // 5. Command to run the TUI binary, unless explicitly overridden.
+    // Some apps need custom Ghostty startup semantics (for example `shell:`
+    // commands paired with explicit working-directory behavior), so a manifest
+    // `command` must take precedence over this default.
     // Use ./ prefix so ghostty resolves the binary relative to CWD
     // (the runtime chdirs to its own directory at startup).
-    write!(buf, "command = direct:./{command_target}\n")?;
+    if !config.ghostty.contains_key("command") {
+        write!(buf, "command = direct:./{command_target}\n")?;
+    }
 
     Ok(buf)
 }
@@ -673,5 +678,30 @@ mod tests {
         manifest.environment.env_file = Some("nonexistent.env".into());
         let result = assemble_environment(dir.path(), &manifest);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn assemble_config_adds_default_command_when_not_overridden() {
+        let dir = tempfile::tempdir().unwrap();
+        let manifest = test_manifest();
+        let bytes = assemble_config(dir.path(), &manifest, "app_core", &[]).unwrap();
+        let rendered = String::from_utf8(bytes).unwrap();
+
+        assert!(rendered.contains("command = direct:./app_core\n"));
+    }
+
+    #[test]
+    fn assemble_config_respects_manifest_command_override() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut manifest = test_manifest();
+        manifest.ghostty.insert(
+            "command".into(),
+            toml::Value::String("shell:./app_core".into()),
+        );
+        let bytes = assemble_config(dir.path(), &manifest, "app_core", &[]).unwrap();
+        let rendered = String::from_utf8(bytes).unwrap();
+
+        assert!(rendered.contains("command = shell:./app_core\n"));
+        assert!(!rendered.contains("command = direct:./app_core\n"));
     }
 }
