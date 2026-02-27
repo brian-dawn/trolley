@@ -69,7 +69,7 @@ jobs:
         run: nix develop -L -v -c just release --target ${{ matrix.target }} --system ${{ steps.deps.outputs.deps }}
 
       - name: Sanity test
-        run: nix develop -L -v -c just sanity-test --target ${{ matrix.target }}
+        run: just sanity-test --target ${{ matrix.target }}
 
       - uses: actions/upload-artifact@v4
         with:
@@ -115,7 +115,7 @@ jobs:
         run: nix develop -L -v -c just release-runtime --target ${{ matrix.target }} --system ${{ steps.deps.outputs.deps }}
 
       - name: Sanity test
-        run: nix develop -L -v -c just sanity-test --target ${{ matrix.target }}
+        run: just sanity-test --target ${{ matrix.target }}
 
       - uses: actions/upload-artifact@v4
         with:
