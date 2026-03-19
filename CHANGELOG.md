@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.1
+
+### Runtime
+
+- [windows] Fix console window showing in packaged apps (#19)
+
+### CLI
+
+- [all] improve icon handling (#19)
+- [windows] Fix packager failing on missing TLS dependency (#19)
+
 ## 0.6.0
 
 ### Runtime
