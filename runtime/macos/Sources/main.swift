@@ -527,6 +527,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if titlebarStyle == 1 {
             window.titlebarAppearsTransparent = true
             window.titlebarSeparatorStyle = .none
+            window.titleVisibility = .hidden
         }
         window.title = "trolley"
 
