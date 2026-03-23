@@ -505,7 +505,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let initialWidth = gWindowConfig.initial_width > 0 ? CGFloat(gWindowConfig.initial_width) : 800
         let initialHeight = gWindowConfig.initial_height > 0 ? CGFloat(gWindowConfig.initial_height) : 600
 
-        var styleMask: NSWindow.StyleMask = [.titled, .closable, .miniaturizable]
+        var styleMask: NSWindow.StyleMask = [.titled, .closable, .miniaturizable, .fullSizeContentView]
         if gWindowConfig.resizable != 0 {  // -1 (unset) or 1 (true) → resizable
             styleMask.insert(.resizable)
         }
@@ -516,6 +516,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             backing: .buffered,
             defer: false
         )
+        window.titlebarAppearsTransparent = true
+        window.titlebarSeparatorStyle = .none
         window.title = "trolley"
 
         // Min/max size limits (each dimension independent)
