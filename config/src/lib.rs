@@ -319,6 +319,18 @@ pub struct App {
     pub icons: Vec<String>,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum TitlebarStyle {
+    /// Standard opaque titlebar (default).
+    #[default]
+    Native,
+    /// Titlebar blends with the terminal background color.
+    Transparent,
+    /// No titlebar or window decorations.
+    Hidden,
+}
+
 #[derive(Debug, Deserialize, Serialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct Gui {
@@ -336,6 +348,8 @@ pub struct Gui {
     pub max_width: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_height: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub titlebar: Option<TitlebarStyle>,
 }
 
 impl Gui {
@@ -347,6 +361,7 @@ impl Gui {
             && self.min_height.is_none()
             && self.max_width.is_none()
             && self.max_height.is_none()
+            && self.titlebar.is_none()
     }
 }
 
@@ -765,6 +780,8 @@ pub struct TrolleyGuiConfig {
     pub initial_height: u32,
     /// -1 = unset, 0 = false, 1 = true.
     pub resizable: i8,
+    /// Titlebar style: 0 = native, 1 = transparent, 2 = hidden.
+    pub titlebar: u8,
     /// Minimum width in pixels. 0 = unset.
     pub min_width: u32,
     /// Minimum height in pixels. 0 = unset.
@@ -803,6 +820,11 @@ pub unsafe extern "C" fn trolley_load_manifest(
             None => -1,
             Some(false) => 0,
             Some(true) => 1,
+        };
+        window_config.titlebar = match manifest.gui.titlebar.unwrap_or_default() {
+            TitlebarStyle::Native => 0,
+            TitlebarStyle::Transparent => 1,
+            TitlebarStyle::Hidden => 2,
         };
         window_config.min_width = manifest.gui.min_width.unwrap_or(0);
         window_config.min_height = manifest.gui.min_height.unwrap_or(0);
