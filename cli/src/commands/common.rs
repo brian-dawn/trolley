@@ -577,7 +577,7 @@ pub fn assemble_config(
 // Embeds: data paths
 // ---------------------------------------------------------------------------
 
-fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<()> {
+fn collect_dir_recursive(src: &Path, dst: &Path, relative_base: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
     std::fs::create_dir_all(dst)
         .with_context(|| format!("creating directory {}", dst.display()))?;
     for entry in std::fs::read_dir(src)
@@ -587,19 +587,22 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<()> {
         let src_path = entry.path();
         let dst_path = dst.join(entry.file_name());
         if src_path.is_dir() {
-            copy_dir_recursive(&src_path, &dst_path)?;
+            collect_dir_recursive(&src_path, &dst_path, relative_base, files)?;
         } else {
             std::fs::copy(&src_path, &dst_path)
                 .with_context(|| format!("copying {} to {}", src_path.display(), dst_path.display()))?;
+            if let Ok(rel) = dst_path.strip_prefix(relative_base) {
+                files.push(rel.to_path_buf());
+            }
         }
     }
     Ok(())
 }
 
 /// Copy `[embeds].data` entries into the bundle directory.
-/// Returns the number of entries copied.
-pub fn copy_embeds_data(project_dir: &Path, config: &Config, bundle_dir: &Path) -> Result<usize> {
-    let count = config.embeds.data.len();
+/// Returns relative paths of all copied files (for manifest.resources).
+pub fn copy_embeds_data(project_dir: &Path, config: &Config, bundle_dir: &Path) -> Result<Vec<PathBuf>> {
+    let mut files = Vec::new();
     for entry in &config.embeds.data {
         let src = project_dir.join(entry);
         let dst = bundle_dir.join(entry);
@@ -607,16 +610,19 @@ pub fn copy_embeds_data(project_dir: &Path, config: &Config, bundle_dir: &Path) 
             bail!("[embeds].data entry '{}' not found at {}", entry, src.display());
         }
         if src.is_dir() {
-            copy_dir_recursive(&src, &dst)?;
+            collect_dir_recursive(&src, &dst, bundle_dir, &mut files)?;
         } else {
             if let Some(parent) = dst.parent() {
                 std::fs::create_dir_all(parent)?;
             }
             std::fs::copy(&src, &dst)
                 .with_context(|| format!("copying {} to {}", src.display(), dst.display()))?;
+            if let Ok(rel) = dst.strip_prefix(bundle_dir) {
+                files.push(rel.to_path_buf());
+            }
         }
     }
-    Ok(count)
+    Ok(files)
 }
 
 #[cfg(test)]

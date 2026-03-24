@@ -138,8 +138,10 @@ pub fn run(
         fs::set_permissions(bundle_dir.join(&manifest.core_name), mode)?;
     }
 
-    // Copy embedded data paths into bundle
-    let data_count = common::copy_embeds_data(&ctx.project_dir, &ctx.config, &bundle_dir)?;
+    // Copy embedded data paths into bundle and register as resources
+    let data_files = common::copy_embeds_data(&ctx.project_dir, &ctx.config, &bundle_dir)?;
+    let data_count = data_files.len();
+    manifest.resources.extend(data_files);
 
     println!("Bundle written to {}", bundle_dir.display());
     println!("  {}  (runtime)", manifest.runtime_name);
