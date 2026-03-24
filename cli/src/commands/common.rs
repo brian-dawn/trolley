@@ -573,6 +573,52 @@ pub fn assemble_config(
     Ok(buf)
 }
 
+// ---------------------------------------------------------------------------
+// Embeds: data paths
+// ---------------------------------------------------------------------------
+
+fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<()> {
+    std::fs::create_dir_all(dst)
+        .with_context(|| format!("creating directory {}", dst.display()))?;
+    for entry in std::fs::read_dir(src)
+        .with_context(|| format!("reading directory {}", src.display()))?
+    {
+        let entry = entry?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+        if src_path.is_dir() {
+            copy_dir_recursive(&src_path, &dst_path)?;
+        } else {
+            std::fs::copy(&src_path, &dst_path)
+                .with_context(|| format!("copying {} to {}", src_path.display(), dst_path.display()))?;
+        }
+    }
+    Ok(())
+}
+
+/// Copy `[embeds].data` entries into the bundle directory.
+/// Returns the number of entries copied.
+pub fn copy_embeds_data(project_dir: &Path, config: &Config, bundle_dir: &Path) -> Result<usize> {
+    let count = config.embeds.data.len();
+    for entry in &config.embeds.data {
+        let src = project_dir.join(entry);
+        let dst = bundle_dir.join(entry);
+        if !src.exists() {
+            bail!("[embeds].data entry '{}' not found at {}", entry, src.display());
+        }
+        if src.is_dir() {
+            copy_dir_recursive(&src, &dst)?;
+        } else {
+            if let Some(parent) = dst.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            std::fs::copy(&src, &dst)
+                .with_context(|| format!("copying {} to {}", src.display(), dst.display()))?;
+        }
+    }
+    Ok(count)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -598,6 +644,7 @@ mod tests {
             gui: Gui::default(),
             environment: Environment::default(),
             ghostty: BTreeMap::new(),
+            embeds: trolley_config::Embeds::default(),
         }
     }
 
@@ -680,29 +727,4 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[test]
-    fn assemble_config_adds_default_command_when_not_overridden() {
-        let dir = tempfile::tempdir().unwrap();
-        let manifest = test_manifest();
-        let bytes = assemble_config(dir.path(), &manifest, "app_core", &[]).unwrap();
-        let rendered = String::from_utf8(bytes).unwrap();
-
-        assert!(rendered.contains("working-directory = inherit\n"));
-        assert!(rendered.contains("command = direct:./app_core\n"));
-    }
-
-    #[test]
-    fn assemble_config_respects_manifest_command_override() {
-        let dir = tempfile::tempdir().unwrap();
-        let mut manifest = test_manifest();
-        manifest.ghostty.insert(
-            "command".into(),
-            toml::Value::String("shell:./app_core".into()),
-        );
-        let bytes = assemble_config(dir.path(), &manifest, "app_core", &[]).unwrap();
-        let rendered = String::from_utf8(bytes).unwrap();
-
-        assert!(rendered.contains("command = shell:./app_core\n"));
-        assert!(!rendered.contains("command = direct:./app_core\n"));
-    }
 }

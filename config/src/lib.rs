@@ -306,6 +306,22 @@ pub struct Config {
     pub environment: Environment,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub ghostty: BTreeMap<String, toml::Value>,
+    #[serde(default, skip_serializing_if = "Embeds::is_default")]
+    pub embeds: Embeds,
+}
+
+#[derive(Debug, Default, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Embeds {
+    /// Files or directories to copy into the bundle root.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub data: Vec<String>,
+}
+
+impl Embeds {
+    pub fn is_default(&self) -> bool {
+        self.data.is_empty()
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]

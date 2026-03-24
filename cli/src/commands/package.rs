@@ -138,6 +138,9 @@ pub fn run(
         fs::set_permissions(bundle_dir.join(&manifest.core_name), mode)?;
     }
 
+    // Copy embedded data paths into bundle
+    let data_count = common::copy_embeds_data(&ctx.project_dir, &ctx.config, &bundle_dir)?;
+
     println!("Bundle written to {}", bundle_dir.display());
     println!("  {}  (runtime)", manifest.runtime_name);
     println!("  {}  (TUI binary)", manifest.core_name);
@@ -152,6 +155,9 @@ pub fn run(
     }
     if !font_files.is_empty() {
         println!("  fonts/  ({} font files)", font_files.len());
+    }
+    if data_count > 0 {
+        println!("  ({data_count} embedded data entries)");
     }
 
     // Build packages unless bundle-only

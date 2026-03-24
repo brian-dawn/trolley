@@ -65,6 +65,7 @@ pub fn run(path: Option<String>) -> Result<()> {
         gui: Gui::default(),
         environment: Environment::default(),
         ghostty: BTreeMap::new(),
+        embeds: trolley_config::Embeds::default(),
     };
 
     let content = toml::to_string_pretty(&manifest).context("serializing manifest")?;
